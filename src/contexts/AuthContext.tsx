@@ -37,8 +37,38 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       console.log('📱 AuthProvider - Initial session check:', {
         hasSession: !!session,
         userId: session?.user?.id,
-        email: session?.user?.email
+        email: session?.user?.email,
+        userMetadata: session?.user?.user_metadata
       });
+      
+      if (session?.user) {
+        // Check if user profile exists in our users table
+        console.log('🔍 AuthProvider - Checking user profile in users table');
+        supabase
+          .from('users')
+          .select('*')
+          .eq('id', session.user.id)
+          .single()
+          .then(({ data: userProfile, error: profileError }) => {
+            if (profileError) {
+              console.error('❌ AuthProvider - Error fetching user profile:', {
+                error: profileError.message,
+                details: profileError,
+                code: profileError.code
+              });
+            } else if (userProfile) {
+              console.log('✅ AuthProvider - User profile found:', {
+                id: userProfile.id,
+                name: userProfile.name,
+                email: userProfile.email,
+                created_at: userProfile.created_at
+              });
+            } else {
+              console.log('⚠️ AuthProvider - No user profile found in users table');
+            }
+          });
+      }
+      
       setUser(session?.user ?? null);
       setLoading(false);
     });
@@ -49,8 +79,37 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         event,
         hasSession: !!session,
         userId: session?.user?.id,
-        email: session?.user?.email
+        email: session?.user?.email,
+        userMetadata: session?.user?.user_metadata
       });
+      
+      // If user just signed in, check their profile
+      if (event === 'SIGNED_IN' && session?.user) {
+        console.log('🔍 AuthProvider - User signed in, checking profile in users table');
+        supabase
+          .from('users')
+          .select('*')
+          .eq('id', session.user.id)
+          .single()
+          .then(({ data: userProfile, error: profileError }) => {
+            if (profileError) {
+              console.error('❌ AuthProvider - Error fetching user profile after sign in:', {
+                error: profileError.message,
+                details: profileError,
+                code: profileError.code
+              });
+            } else if (userProfile) {
+              console.log('✅ AuthProvider - User profile confirmed after sign in:', {
+                id: userProfile.id,
+                name: userProfile.name,
+                email: userProfile.email,
+                created_at: userProfile.created_at
+              });
+            } else {
+              console.log('⚠️ AuthProvider - No user profile found after sign in - trigger may have failed');
+            }
+          });
+      }
       
       // Update user state with the current session
       setUser(session?.user ?? null);
